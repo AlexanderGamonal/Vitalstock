@@ -2,17 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  // Guard: si las env vars no están disponibles (ej. build estático), no hacer nada
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Si las env vars no están configuradas, dejar pasar sin autenticación
+  if (!supabaseUrl || !supabaseKey) {
     return NextResponse.next();
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  try {
+    let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -27,25 +28,27 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const isLoginPage = request.nextUrl.pathname.startsWith("/login");
+
+    if (!user && !isLoginPage) {
+      return NextResponse.redirect(new URL("/login", request.url));
     }
-  );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    if (user && isLoginPage) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
 
-  const isLoginPage = request.nextUrl.pathname.startsWith("/login");
-  const isPublicRoute = isLoginPage;
-
-  if (!user && !isPublicRoute) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return supabaseResponse;
+  } catch {
+    // Si el middleware falla por cualquier motivo, dejar pasar la request
+    return NextResponse.next();
   }
-
-  if (user && isLoginPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  return supabaseResponse;
 }
 
 export const config = {
