@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --vs-bg: #F7F5F0;
+  --vs-green: #2D6A4F;
+  --vs-green-light: #52B788;
+  --vs-green-pale: #D8F3DC;
+  --vs-accent: #F4A261;
+  --vs-text: #1B2B1E;
+  --vs-muted: #6B7C6E;
+  --vs-border: #E0EBE3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--vs-bg);
+  color: var(--vs-text);
+}
