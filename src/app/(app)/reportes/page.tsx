@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { createClient } from "@/lib/supabase/server";
 import { fmt } from "@/lib/utils";
 import type { Producto, ResumenFeria } from "@/types/database";
