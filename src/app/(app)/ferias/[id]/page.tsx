@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { fmt } from "@/lib/utils";
 import type { Feria, FeriaProducto, Producto } from "@/types/database";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function FeriaDetailPage({ params }: { params: { id: string } }) {
+export default function FeriaDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const supabase = createClient();
   const router = useRouter();
 
@@ -24,8 +25,8 @@ export default function FeriaDetailPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     const load = async () => {
       const [{ data: f }, { data: fp }, { data: p }] = await Promise.all([
-        supabase.schema("vitalstock").from("ferias").select("*").eq("id", params.id).single(),
-        supabase.schema("vitalstock").from("feria_productos").select("*, producto:productos(*)").eq("feria_id", params.id),
+        supabase.schema("vitalstock").from("ferias").select("*").eq("id", id).single(),
+        supabase.schema("vitalstock").from("feria_productos").select("*, producto:productos(*)").eq("feria_id", id),
         supabase.schema("vitalstock").from("productos").select("*").eq("activo", true).order("nombre"),
       ]);
       setFeria(f as Feria);
@@ -34,7 +35,7 @@ export default function FeriaDetailPage({ params }: { params: { id: string } }) 
       setLoading(false);
     };
     load();
-  }, [params.id]);
+  }, [id]);
 
   const totalIngresos = items.reduce(
     (a, i) => a + i.cantidad_vendida * (i.precio_venta_feria ?? i.producto?.precio_venta ?? 0), 0
@@ -53,7 +54,7 @@ export default function FeriaDetailPage({ params }: { params: { id: string } }) 
       .map(([producto_id, cantidad_llevada]) => {
         const p = productos.find((pr) => pr.id === producto_id);
         return {
-          feria_id: params.id,
+          feria_id: id,
           producto_id,
           cantidad_llevada,
           cantidad_vendida: 0,
@@ -87,7 +88,7 @@ export default function FeriaDetailPage({ params }: { params: { id: string } }) 
         .update({ cantidad_vendida: item.cantidad_vendida })
         .eq("id", item.id);
     }
-    await supabase.rpc("cerrar_feria", { p_feria_id: params.id });
+    await supabase.rpc("cerrar_feria", { p_feria_id: id });
     router.push("/ferias");
     router.refresh();
   };
