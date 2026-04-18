@@ -25,9 +25,9 @@ export default function FeriaDetailPage() {
   useEffect(() => {
     const load = async () => {
       const [{ data: f }, { data: fp }, { data: p }] = await Promise.all([
-        supabase.schema("vitalstock").from("ferias").select("*").eq("id", id).single(),
-        supabase.schema("vitalstock").from("feria_productos").select("*, producto:productos(*)").eq("feria_id", id),
-        supabase.schema("vitalstock").from("productos").select("*").eq("activo", true).order("nombre"),
+        supabase.from("ferias").select("*").eq("id", id).single(),
+        supabase.from("feria_productos").select("*, producto:productos(*)").eq("feria_id", id),
+        supabase.from("productos").select("*").eq("activo", true).order("nombre"),
       ]);
       setFeria(f as Feria);
       setItems((fp ?? []) as (FeriaProducto & { producto: Producto })[]);
@@ -62,7 +62,7 @@ export default function FeriaDetailPage() {
         };
       });
 
-    await supabase.schema("vitalstock").from("feria_productos").insert(rows);
+    await supabase.from("feria_productos").insert(rows);
     router.refresh();
     window.location.reload();
   };
@@ -83,7 +83,6 @@ export default function FeriaDetailPage() {
     setSaving(true);
     for (const item of items) {
       await supabase
-        .schema("vitalstock")
         .from("feria_productos")
         .update({ cantidad_vendida: item.cantidad_vendida })
         .eq("id", item.id);

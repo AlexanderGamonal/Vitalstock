@@ -9,7 +9,7 @@ export default async function ProductosPage() {
   const supabase = await createClient();
 
   const { data: productos } = await supabase
-    .schema("vitalstock")
+    
     .from("productos")
     .select("*")
     .eq("activo", true)

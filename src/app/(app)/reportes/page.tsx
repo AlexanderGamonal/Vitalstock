@@ -8,8 +8,8 @@ export default async function ReportesPage() {
   const supabase = await createClient();
 
   const [{ data: ferias }, { data: productos }] = await Promise.all([
-    supabase.schema("vitalstock").from("v_resumen_ferias").select("*").eq("estado", "finalizada").order("fecha", { ascending: false }),
-    supabase.schema("vitalstock").from("productos").select("*").eq("activo", true).order("precio_venta", { ascending: false }),
+    supabase.from("v_resumen_ferias").select("*").eq("estado", "finalizada").order("fecha", { ascending: false }),
+    supabase.from("productos").select("*").eq("activo", true).order("precio_venta", { ascending: false }),
   ]);
 
   const feriasList = (ferias as ResumenFeria[]) ?? [];

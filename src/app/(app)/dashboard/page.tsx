@@ -10,14 +10,14 @@ export default async function DashboardPage() {
 
   // Productos con stock bajo
   const { data: stockBajo } = await supabase
-    .schema("vitalstock")
+    
     .from("v_stock_bajo")
     .select("*")
     .limit(5);
 
   // Todos los productos (para estrella)
   const { data: productos } = await supabase
-    .schema("vitalstock")
+    
     .from("productos")
     .select("*")
     .eq("activo", true)
@@ -26,7 +26,7 @@ export default async function DashboardPage() {
 
   // Ferias recientes
   const { data: ferias } = await supabase
-    .schema("vitalstock")
+    
     .from("v_resumen_ferias")
     .select("*")
     .order("fecha", { ascending: false })

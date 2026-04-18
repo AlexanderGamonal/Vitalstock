@@ -9,7 +9,7 @@ export default async function FeriasPage() {
   const supabase = await createClient();
 
   const { data: ferias } = await supabase
-    .schema("vitalstock")
+    
     .from("v_resumen_ferias")
     .select("*")
     .order("fecha", { ascending: false });

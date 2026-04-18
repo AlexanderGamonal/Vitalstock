@@ -60,7 +60,7 @@ export default function NuevoProductoPage() {
     }
 
     const { error: insertError } = await supabase
-      .schema("vitalstock")
+      
       .from("productos")
       .insert({
         nombre: form.nombre.trim(),

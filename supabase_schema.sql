@@ -1,159 +1,220 @@
 -- ============================================================
--- VITALSTOCK — Schema completo para Supabase (IDEMPOTENTE)
--- Si ya existe algo, lo recrea limpiamente.
--- Ejecutar en: Supabase Dashboard → SQL Editor → New Query
+-- VITALSTOCK - Migración inicial
+-- Ejecutar en Supabase > SQL Editor
 -- ============================================================
 
--- 1. Eliminar schema existente y recrearlo desde cero
-DROP SCHEMA IF EXISTS vitalstock CASCADE;
-CREATE SCHEMA vitalstock;
+-- Habilitar extensión para UUIDs
+create extension if not exists "uuid-ossp";
 
 -- ============================================================
--- TABLAS
+-- TABLA: productos
 -- ============================================================
-
--- Productos
-CREATE TABLE vitalstock.productos (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nombre          TEXT NOT NULL,
-  descripcion     TEXT,
-  foto_url        TEXT,
-  precio_costo    NUMERIC(10,2) NOT NULL DEFAULT 0,
-  precio_venta    NUMERIC(10,2) NOT NULL DEFAULT 0,
-  stock_actual    INTEGER NOT NULL DEFAULT 0,
-  stock_minimo    INTEGER NOT NULL DEFAULT 1,
-  categoria       TEXT,
-  fecha_venc      DATE,
-  activo          BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Ferias
-CREATE TABLE vitalstock.ferias (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nombre              TEXT NOT NULL,
-  fecha               DATE NOT NULL,
-  ubicacion           TEXT,
-  costo_inscripcion   NUMERIC(10,2) NOT NULL DEFAULT 0,
-  costo_transporte    NUMERIC(10,2) NOT NULL DEFAULT 0,
-  notas               TEXT,
-  estado              TEXT NOT NULL DEFAULT 'proxima'
-                        CHECK (estado IN ('proxima', 'en_curso', 'finalizada')),
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Feria-Productos (canasta llevada a cada feria)
-CREATE TABLE vitalstock.feria_productos (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  feria_id            UUID NOT NULL REFERENCES vitalstock.ferias(id) ON DELETE CASCADE,
-  producto_id         UUID NOT NULL REFERENCES vitalstock.productos(id) ON DELETE RESTRICT,
-  cantidad_llevada    INTEGER NOT NULL DEFAULT 0,
-  cantidad_vendida    INTEGER NOT NULL DEFAULT 0,
-  precio_venta_feria  NUMERIC(10,2),
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Compras a proveedor (historial de reposición)
-CREATE TABLE vitalstock.compras_proveedor (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  producto_id     UUID NOT NULL REFERENCES vitalstock.productos(id) ON DELETE RESTRICT,
-  cantidad        INTEGER NOT NULL,
-  precio_unitario NUMERIC(10,2) NOT NULL,
-  fecha           DATE NOT NULL DEFAULT CURRENT_DATE,
-  proveedor       TEXT,
-  notas           TEXT,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+create table public.productos (
+  id            uuid primary key default uuid_generate_v4(),
+  nombre        text not null,
+  descripcion   text,
+  foto_url      text,
+  precio_costo  numeric(10,2) not null check (precio_costo >= 0),
+  precio_venta  numeric(10,2) not null check (precio_venta >= 0),
+  stock_actual  integer not null default 0 check (stock_actual >= 0),
+  stock_minimo  integer not null default 5 check (stock_minimo >= 0),
+  categoria     text,
+  fecha_venc    date,
+  activo        boolean not null default true,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
 );
 
 -- ============================================================
--- VISTAS
+-- TABLA: ferias
 -- ============================================================
+create table public.ferias (
+  id                uuid primary key default uuid_generate_v4(),
+  nombre            text not null,
+  fecha             date not null,
+  ubicacion         text,
+  costo_inscripcion numeric(10,2) default 0,
+  costo_transporte  numeric(10,2) default 0,
+  notas             text,
+  estado            text not null default 'proxima'
+                      check (estado in ('proxima', 'en_curso', 'finalizada')),
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
 
--- Vista: productos con stock bajo
-CREATE OR REPLACE VIEW vitalstock.v_stock_bajo AS
-SELECT *
-FROM vitalstock.productos
-WHERE activo = TRUE
-  AND stock_actual <= stock_minimo
-ORDER BY (stock_actual::float / NULLIF(stock_minimo, 0)) ASC;
+-- ============================================================
+-- TABLA: feria_productos (canasta por feria)
+-- ============================================================
+create table public.feria_productos (
+  id              uuid primary key default uuid_generate_v4(),
+  feria_id        uuid not null references public.ferias(id) on delete cascade,
+  producto_id     uuid not null references public.productos(id) on delete restrict,
+  cantidad_llevada integer not null default 0 check (cantidad_llevada >= 0),
+  cantidad_vendida integer not null default 0 check (cantidad_vendida >= 0),
+  precio_venta_feria numeric(10,2),
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  unique(feria_id, producto_id)
+);
 
--- Vista: resumen de ferias con totales calculados
-CREATE OR REPLACE VIEW vitalstock.v_resumen_ferias AS
-SELECT
-  f.*,
-  COALESCE(SUM(fp.cantidad_vendida * COALESCE(fp.precio_venta_feria, p.precio_venta)), 0)  AS total_ingresos,
-  COALESCE(SUM(fp.cantidad_vendida * p.precio_costo), 0)                                   AS total_costo_productos,
-  COALESCE(SUM(fp.cantidad_vendida * COALESCE(fp.precio_venta_feria, p.precio_venta)), 0)
-    - COALESCE(SUM(fp.cantidad_vendida * p.precio_costo), 0)
+-- ============================================================
+-- TABLA: compras_proveedor
+-- ============================================================
+create table public.compras_proveedor (
+  id              uuid primary key default uuid_generate_v4(),
+  producto_id     uuid not null references public.productos(id) on delete restrict,
+  cantidad        integer not null check (cantidad > 0),
+  precio_unitario numeric(10,2) not null check (precio_unitario >= 0),
+  fecha           date not null default current_date,
+  proveedor       text,
+  notas           text,
+  created_at      timestamptz not null default now()
+);
+
+-- ============================================================
+-- FUNCIÓN: actualizar updated_at automáticamente
+-- ============================================================
+create or replace function public.handle_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger trg_productos_updated_at
+  before update on public.productos
+  for each row execute function public.handle_updated_at();
+
+create trigger trg_ferias_updated_at
+  before update on public.ferias
+  for each row execute function public.handle_updated_at();
+
+create trigger trg_feria_productos_updated_at
+  before update on public.feria_productos
+  for each row execute function public.handle_updated_at();
+
+-- ============================================================
+-- FUNCIÓN: cerrar feria y descontar stock
+-- ============================================================
+create or replace function public.cerrar_feria(p_feria_id uuid)
+returns void as $$
+declare
+  fp record;
+begin
+  for fp in
+    select producto_id, cantidad_vendida
+    from public.feria_productos
+    where feria_id = p_feria_id
+  loop
+    update public.productos
+    set stock_actual = stock_actual - fp.cantidad_vendida
+    where id = fp.producto_id;
+  end loop;
+
+  update public.ferias
+  set estado = 'finalizada'
+  where id = p_feria_id;
+end;
+$$ language plpgsql;
+
+-- ============================================================
+-- FUNCIÓN: reponer stock desde compra a proveedor
+-- ============================================================
+create or replace function public.registrar_compra(
+  p_producto_id uuid,
+  p_cantidad    integer,
+  p_precio      numeric,
+  p_proveedor   text default null,
+  p_notas       text default null
+)
+returns void as $$
+begin
+  insert into public.compras_proveedor
+    (producto_id, cantidad, precio_unitario, proveedor, notas)
+  values
+    (p_producto_id, p_cantidad, p_precio, p_proveedor, p_notas);
+
+  update public.productos
+  set
+    stock_actual  = stock_actual + p_cantidad,
+    precio_costo  = p_precio
+  where id = p_producto_id;
+end;
+$$ language plpgsql;
+
+-- ============================================================
+-- VISTA: resumen de ferias con ganancias
+-- ============================================================
+create or replace view public.v_resumen_ferias as
+select
+  f.id,
+  f.nombre,
+  f.fecha,
+  f.ubicacion,
+  f.estado,
+  f.costo_inscripcion,
+  f.costo_transporte,
+  coalesce(sum(fp.cantidad_vendida * fp.precio_venta_feria), 0)  as total_ingresos,
+  coalesce(sum(fp.cantidad_vendida * p.precio_costo), 0)          as total_costo_productos,
+  coalesce(sum(fp.cantidad_vendida * fp.precio_venta_feria), 0)
+    - coalesce(sum(fp.cantidad_vendida * p.precio_costo), 0)
     - f.costo_inscripcion
-    - f.costo_transporte                                                                    AS ganancia_neta,
-  COALESCE(SUM(fp.cantidad_llevada), 0)                                                    AS total_llevado,
-  COALESCE(SUM(fp.cantidad_vendida), 0)                                                    AS total_vendido
-FROM vitalstock.ferias f
-LEFT JOIN vitalstock.feria_productos fp ON fp.feria_id = f.id
-LEFT JOIN vitalstock.productos p ON p.id = fp.producto_id
-GROUP BY f.id;
+    - f.costo_transporte                                           as ganancia_neta,
+  coalesce(sum(fp.cantidad_llevada), 0)                           as total_llevado,
+  coalesce(sum(fp.cantidad_vendida), 0)                           as total_vendido
+from public.ferias f
+left join public.feria_productos fp on fp.feria_id = f.id
+left join public.productos p on p.id = fp.producto_id
+group by f.id, f.nombre, f.fecha, f.ubicacion, f.estado,
+         f.costo_inscripcion, f.costo_transporte;
 
 -- ============================================================
--- FUNCIÓN RPC: cerrar_feria
+-- VISTA: productos con alerta de stock bajo
 -- ============================================================
-CREATE OR REPLACE FUNCTION vitalstock.cerrar_feria(p_feria_id UUID)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  UPDATE vitalstock.productos p
-  SET
-    stock_actual = p.stock_actual - fp.cantidad_vendida,
-    updated_at   = NOW()
-  FROM vitalstock.feria_productos fp
-  WHERE fp.feria_id    = p_feria_id
-    AND fp.producto_id = p.id;
-
-  UPDATE vitalstock.ferias
-  SET estado = 'finalizada', updated_at = NOW()
-  WHERE id = p_feria_id;
-END;
-$$;
+create or replace view public.v_stock_bajo as
+select
+  id, nombre, categoria, foto_url,
+  stock_actual, stock_minimo,
+  (stock_minimo - stock_actual) as unidades_faltantes,
+  precio_costo, precio_venta,
+  fecha_venc
+from public.productos
+where activo = true
+  and stock_actual <= stock_minimo
+order by (stock_actual::float / nullif(stock_minimo, 0)) asc;
 
 -- ============================================================
--- TRIGGER: updated_at automático
+-- ROW LEVEL SECURITY (RLS)
 -- ============================================================
-CREATE OR REPLACE FUNCTION vitalstock.set_updated_at()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
+alter table public.productos          enable row level security;
+alter table public.ferias             enable row level security;
+alter table public.feria_productos    enable row level security;
+alter table public.compras_proveedor  enable row level security;
 
-CREATE TRIGGER trg_productos_updated_at
-  BEFORE UPDATE ON vitalstock.productos
-  FOR EACH ROW EXECUTE FUNCTION vitalstock.set_updated_at();
+create policy "auth_only" on public.productos
+  for all using (auth.role() = 'authenticated');
 
-CREATE TRIGGER trg_ferias_updated_at
-  BEFORE UPDATE ON vitalstock.ferias
-  FOR EACH ROW EXECUTE FUNCTION vitalstock.set_updated_at();
+create policy "auth_only" on public.ferias
+  for all using (auth.role() = 'authenticated');
 
-CREATE TRIGGER trg_feria_productos_updated_at
-  BEFORE UPDATE ON vitalstock.feria_productos
-  FOR EACH ROW EXECUTE FUNCTION vitalstock.set_updated_at();
+create policy "auth_only" on public.feria_productos
+  for all using (auth.role() = 'authenticated');
+
+create policy "auth_only" on public.compras_proveedor
+  for all using (auth.role() = 'authenticated');
 
 -- ============================================================
--- DATOS DE PRUEBA
+-- STORAGE: bucket para fotos de productos
 -- ============================================================
-INSERT INTO vitalstock.productos (nombre, descripcion, precio_costo, precio_venta, stock_actual, stock_minimo, categoria)
-VALUES
-  ('Granola artesanal 500g',   'Con avena, miel y frutos secos',  8.00,  18.00, 15, 5, 'Cereales'),
-  ('Miel de abeja pura 250ml', '100% natural, sin aditivos',      12.00, 28.00, 8,  3, 'Endulzantes'),
-  ('Quinoa orgánica 1kg',      'Variedad blanca peruana',          9.00,  22.00, 20, 5, 'Granos'),
-  ('Cacao en polvo 200g',      'Sin azúcar, origen Cusco',        7.00,  16.00, 2,  4, 'Superfoods');
+insert into storage.buckets (id, name, public)
+values ('productos', 'productos', true)
+on conflict do nothing;
 
-INSERT INTO vitalstock.ferias (nombre, fecha, ubicacion, costo_inscripcion, costo_transporte, estado)
-VALUES
-  ('Feria Orgánica Cusco', '2025-05-10', 'Plaza San Francisco, Cusco', 50.00, 20.00, 'proxima'),
-  ('Mercado Verde Abril',  '2025-04-05', 'Parque El Ejido, Cusco',     30.00, 15.00, 'finalizada');
+create policy "auth_upload" on storage.objects
+  for insert with check (
+    bucket_id = 'productos' and auth.role() = 'authenticated'
+  );
+
+create policy "public_read" on storage.objects
+  for select using (bucket_id = 'productos');

@@ -22,4 +22,3 @@ export const stockStatus = (actual: number, minimo: number) => {
   return "ok";
 };
 
-export const SCHEMA = "vitalstock";

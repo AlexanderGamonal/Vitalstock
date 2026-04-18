@@ -25,7 +25,7 @@ export default function NuevaFeriaPage() {
     setError("");
 
     const { error: err } = await supabase
-      .schema("vitalstock")
+      
       .from("ferias")
       .insert({
         nombre: form.nombre.trim(),
