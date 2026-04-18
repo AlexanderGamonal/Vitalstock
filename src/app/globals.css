@@ -3,21 +3,46 @@
 @tailwind utilities;
 
 :root {
-  --vs-bg: #F7F5F0;
-  --vs-green: #2D6A4F;
-  --vs-green-light: #52B788;
-  --vs-green-pale: #D8F3DC;
-  --vs-accent: #F4A261;
-  --vs-text: #1B2B1E;
-  --vs-muted: #6B7C6E;
-  --vs-border: #E0EBE3;
+  --vs-bg:           #F7F5F0;
+  --vs-green:        #2D6A4F;
+  --vs-green-light:  #52B788;
+  --vs-green-pale:   #D8F3DC;
+  --vs-accent:       #F4A261;
+  --vs-accent-light: #FFE8D6;
+  --vs-text:         #1B2B1E;
+  --vs-muted:        #6B7C6E;
+  --vs-border:       #E0EBE3;
+  --vs-white:        #ffffff;
 }
 
-* {
-  box-sizing: border-box;
+.dark {
+  --vs-bg:           #131a16;
+  --vs-green:        #52B788;
+  --vs-green-light:  #74C69D;
+  --vs-green-pale:   #1a2e22;
+  --vs-accent:       #F4A261;
+  --vs-accent-light: #2e2018;
+  --vs-text:         #e2ede5;
+  --vs-muted:        #8aaa90;
+  --vs-border:       #253329;
+  --vs-white:        #1e2b22;
 }
+
+* { box-sizing: border-box; }
 
 body {
   background-color: var(--vs-bg);
   color: var(--vs-text);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Dark mode: reemplaza bg-white en cards e inputs */
+.dark .bg-white {
+  background-color: var(--vs-white) !important;
+}
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #192418 !important;
+  color: var(--vs-text) !important;
 }
