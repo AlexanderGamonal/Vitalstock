@@ -1,8 +1,8 @@
 export const fmt = (amount: number) =>
-  new Intl.NumberFormat("es-CL", {
+  new Intl.NumberFormat("es-PE", {
     style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
+    currency: "PEN",
+    maximumFractionDigits: 2,
   }).format(amount);
 
 export const calcMargen = (venta: number, costo: number) =>
