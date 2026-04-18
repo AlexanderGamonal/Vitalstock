@@ -1,14 +1,14 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { fmt } from "@/lib/utils";
 import type { Feria, FeriaProducto, Producto } from "@/types/database";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
-export default function FeriaDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function FeriaDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const supabase = createClient();
   const router = useRouter();
 
