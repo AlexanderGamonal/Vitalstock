@@ -53,8 +53,8 @@ export default async function ProductosPage() {
           const isLow = p.stock_actual <= p.stock_minimo;
           const isOut = p.stock_actual === 0;
           return (
+            <Link key={p.id} href={`/productos/${p.id}/editar`}>
             <div
-              key={p.id}
               className={`bg-white rounded-2xl border p-4 ${
                 isOut
                   ? "border-red-300"
@@ -75,7 +75,7 @@ export default async function ProductosPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0">
                       <div className="font-body font-bold text-vs-text text-sm leading-tight">{p.nombre}</div>
                       {p.descripcion && (
                         <div className="font-body text-vs-muted text-xs mt-0.5 truncate">{p.descripcion}</div>
@@ -126,6 +126,7 @@ export default async function ProductosPage() {
                 </div>
               </div>
             </div>
+            </Link>
           );
         })}
 
