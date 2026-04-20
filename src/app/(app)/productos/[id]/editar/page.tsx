@@ -17,6 +17,7 @@ export default function EditarProductoPage() {
     nombre: "", descripcion: "", categoria: "",
     precio_costo: "", precio_venta: "",
     stock_actual: "", stock_minimo: "", fecha_venc: "",
+    destacado: false,
   });
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [foto, setFoto] = useState<File | null>(null);
@@ -42,6 +43,7 @@ export default function EditarProductoPage() {
             stock_actual: String(data.stock_actual ?? ""),
             stock_minimo: String(data.stock_minimo ?? ""),
             fecha_venc: data.fecha_venc ?? "",
+            destacado: data.destacado ?? false,
           });
           setFotoUrl(data.foto_url ?? null);
         }
@@ -92,6 +94,7 @@ export default function EditarProductoPage() {
         precio_venta: pVenta,
         stock_actual: parseInt(form.stock_actual),
         stock_minimo: parseInt(form.stock_minimo) || 5,
+        destacado: form.destacado,
         fecha_venc: form.fecha_venc || null,
         foto_url,
       })
@@ -192,6 +195,23 @@ export default function EditarProductoPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="block font-body font-bold text-vs-text text-sm mb-1.5">Producto estrella</label>
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, destacado: !form.destacado })}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-body font-bold text-sm transition-colors ${
+              form.destacado
+                ? "bg-amber-50 border-amber-300 text-amber-700"
+                : "bg-white border-vs-border text-vs-muted"
+            }`}
+          >
+            <span>{form.destacado ? "⭐" : "☆"}</span>
+            {form.destacado ? "Marcado como estrella" : "Marcar como estrella"}
+          </button>
+          <p className="font-body text-vs-muted text-xs mt-1">Los productos estrella aparecen destacados en el inicio</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

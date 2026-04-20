@@ -10,6 +10,7 @@ export type Producto = {
   categoria: string | null
   fecha_venc: string | null
   activo: boolean
+  destacado: boolean
   created_at: string
   updated_at: string
 }

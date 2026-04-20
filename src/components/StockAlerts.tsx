@@ -8,12 +8,14 @@ export default function StockAlerts() {
   const [alertas, setAlertas] = useState<Producto[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const fetchAlertas = () => {
     createClient()
       .from("v_stock_bajo")
       .select("*")
       .then(({ data }) => setAlertas((data as Producto[]) ?? []));
-  }, []);
+  };
+
+  useEffect(() => { fetchAlertas(); }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -23,10 +25,16 @@ export default function StockAlerts() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const handleToggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) fetchAlertas();
+  };
+
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className="relative w-9 h-9 rounded-xl bg-vs-greenPale flex items-center justify-center text-base hover:bg-vs-green hover:text-white transition-colors"
       >
         🔔
@@ -43,9 +51,7 @@ export default function StockAlerts() {
             <p className="font-body font-bold text-vs-text text-sm">Alertas de stock</p>
           </div>
           {alertas.length === 0 ? (
-            <div className="p-5 text-center font-body text-vs-muted text-sm">
-              ✅ Todo en orden
-            </div>
+            <div className="p-5 text-center font-body text-vs-muted text-sm">✅ Todo en orden</div>
           ) : (
             <div className="max-h-64 overflow-y-auto divide-y divide-vs-border">
               {alertas.map((p) => (

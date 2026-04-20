@@ -1,26 +1,54 @@
-export const dynamic = 'force-dynamic';
+"use client";
 
-import { createClient } from "@/lib/supabase/server";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { fmt } from "@/lib/utils";
 import type { Producto, ResumenFeria } from "@/types/database";
 
-export default async function ReportesPage() {
-  const supabase = await createClient();
+export default function ReportesPage() {
+  const [loading, setLoading] = useState(true);
+  const [feriasList, setFeriasList] = useState<ResumenFeria[]>([]);
+  const [prodList, setProdList] = useState<Producto[]>([]);
 
-  const [{ data: ferias }, { data: productos }] = await Promise.all([
-    supabase.from("v_resumen_ferias").select("*").eq("estado", "finalizada").order("fecha", { ascending: false }),
-    supabase.from("productos").select("*").eq("activo", true).order("precio_venta", { ascending: false }),
-  ]);
-
-  const feriasList = (ferias as ResumenFeria[]) ?? [];
-  const prodList = (productos as Producto[]) ?? [];
+  useEffect(() => {
+    const supabase = createClient();
+    Promise.all([
+      supabase.from("v_resumen_ferias").select("*").eq("estado", "finalizada").order("fecha", { ascending: false }),
+      supabase.from("productos").select("*").eq("activo", true).order("precio_venta", { ascending: false }),
+    ]).then(([{ data: f }, { data: p }]) => {
+      setFeriasList((f as ResumenFeria[]) ?? []);
+      setProdList((p as Producto[]) ?? []);
+      setLoading(false);
+    });
+  }, []);
 
   const totalIngresos = feriasList.reduce((a, f) => a + Number(f.total_ingresos), 0);
   const totalGanancia = feriasList.reduce((a, f) => a + Number(f.ganancia_neta), 0);
   const totalFerias = feriasList.length;
   const margenPromedio = totalIngresos > 0 ? ((totalGanancia / totalIngresos) * 100).toFixed(1) : "0";
-
   const maxIngresos = Math.max(...feriasList.map((f) => Number(f.total_ingresos)), 1);
+
+  const valorInventario = prodList.reduce((a, p) => a + p.stock_actual * p.precio_costo, 0);
+  const valorVentaPotencial = prodList.reduce((a, p) => a + p.stock_actual * p.precio_venta, 0);
+
+  if (loading) return (
+    <div className="animate-pulse">
+      <div className="h-7 w-28 bg-vs-border rounded-xl mb-5" />
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-vs-border h-24" />
+        ))}
+      </div>
+      <div className="h-6 w-40 bg-vs-border rounded-xl mb-3" />
+      <div className="bg-white rounded-2xl border border-vs-border h-48 mb-6" />
+      <div className="h-6 w-48 bg-vs-border rounded-xl mb-3" />
+      <div className="space-y-2">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-vs-border h-16" />
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -40,6 +68,33 @@ export default async function ReportesPage() {
             <div className="font-body text-vs-muted text-xs mt-1">{stat.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* Inventario */}
+      <div className="mb-6">
+        <h2 className="font-display font-bold text-vs-text text-lg mb-3">Valor del inventario</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white border border-vs-border rounded-2xl p-4">
+            <div className="text-2xl mb-1">🏷️</div>
+            <div className="font-display font-black text-vs-accent text-xl">{fmt(valorInventario)}</div>
+            <div className="font-body text-vs-muted text-xs mt-1">Capital invertido</div>
+            <div className="font-body text-vs-muted text-[10px] mt-0.5">A precio de costo</div>
+          </div>
+          <div className="bg-white border border-vs-border rounded-2xl p-4">
+            <div className="text-2xl mb-1">💎</div>
+            <div className="font-display font-black text-vs-green text-xl">{fmt(valorVentaPotencial)}</div>
+            <div className="font-body text-vs-muted text-xs mt-1">Venta potencial</div>
+            <div className="font-body text-vs-muted text-[10px] mt-0.5">Si vendes todo el stock</div>
+          </div>
+        </div>
+        {valorInventario > 0 && (
+          <div className="bg-vs-greenPale rounded-xl px-4 py-2.5 mt-3 flex justify-between items-center">
+            <span className="font-body text-vs-muted text-xs">Ganancia potencial del inventario</span>
+            <span className="font-display font-black text-vs-green text-sm">
+              {fmt(valorVentaPotencial - valorInventario)}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Comparativa ferias */}
@@ -66,10 +121,7 @@ export default async function ReportesPage() {
                       </div>
                     </div>
                     <div className="bg-vs-border rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-vs-green h-full rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="bg-vs-green h-full rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
@@ -84,7 +136,7 @@ export default async function ReportesPage() {
         <div className="mb-6">
           <h2 className="font-display font-bold text-vs-text text-lg mb-3">Productos por margen</h2>
           <div className="space-y-2">
-            {prodList
+            {[...prodList]
               .sort((a, b) => (b.precio_venta - b.precio_costo) - (a.precio_venta - a.precio_costo))
               .map((p, i) => {
                 const margen = p.precio_venta > 0
@@ -94,18 +146,20 @@ export default async function ReportesPage() {
                 return (
                   <div key={p.id} className="bg-white border border-vs-border rounded-2xl p-4 flex items-center gap-3">
                     <div className="font-display font-black text-vs-muted text-lg w-6">#{i + 1}</div>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${isLow ? "bg-red-50" : "bg-vs-greenPale"}`}>
-                      📦
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${isLow ? "bg-red-50" : "bg-vs-greenPale"}`}>
+                      {p.foto_url ? (
+                        <img src={p.foto_url} alt={p.nombre} className="w-full h-full object-cover rounded-xl" />
+                      ) : "📦"}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-body font-bold text-vs-text text-sm">{p.nombre}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-body font-bold text-vs-text text-sm truncate">{p.nombre}</div>
                       <div className="font-body text-vs-muted text-xs">{p.categoria}</div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <div className="font-display font-black text-vs-green text-sm">{fmt(p.precio_venta)}</div>
                       <div className="font-body font-bold text-vs-accent text-xs">{margen}%</div>
                     </div>
-                    <span className={`font-body font-bold text-xs px-2 py-1 rounded-full ml-1 ${
+                    <span className={`font-body font-bold text-xs px-2 py-1 rounded-full ml-1 flex-shrink-0 ${
                       isLow ? "bg-red-50 text-red-600" : "bg-vs-greenPale text-vs-green"
                     }`}>
                       {p.stock_actual}u
@@ -117,7 +171,7 @@ export default async function ReportesPage() {
         </div>
       )}
 
-      {/* Detalle gastos por feria */}
+      {/* Desglose por feria */}
       {feriasList.length > 0 && (
         <div>
           <h2 className="font-display font-bold text-vs-text text-lg mb-3">Desglose de costos</h2>
@@ -152,7 +206,7 @@ export default async function ReportesPage() {
         </div>
       )}
 
-      {feriasList.length === 0 && (
+      {feriasList.length === 0 && prodList.length === 0 && (
         <div className="text-center py-16">
           <div className="text-5xl mb-4">📊</div>
           <div className="font-display font-bold text-vs-text text-lg">Sin datos aún</div>
