@@ -104,7 +104,9 @@ export default function DashboardPage() {
               {new Date(feriaProxima.fecha + "T00:00:00").toLocaleDateString("es-PE", { day: "numeric", month: "long" })}
             </div>
             <div className="mt-3 bg-white bg-opacity-20 rounded-xl px-3 py-2 inline-block">
-              <span className="font-body font-bold text-sm">Armar canasta →</span>
+              <span className="font-body font-bold text-sm">
+                {feriaProxima.total_llevado > 0 ? "📝 Anotar lo vendido →" : "🎯 Armar canasta →"}
+              </span>
             </div>
           </div>
         </Link>

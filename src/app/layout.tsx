@@ -21,7 +21,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <meta name="theme-color" content="#4a7c59" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className="bg-vs-bg font-body antialiased">

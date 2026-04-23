@@ -6,7 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { fmt } from "@/lib/utils";
 import { convertToWebP } from "@/lib/imageUtils";
 import Link from "next/link";
-
+import Loading from "./loading";
 const CATEGORIAS = ["Snacks", "Proteínas", "Infusiones", "Semillas", "Aceites", "Bebidas", "Suplementos", "Otro"];
 
 export default function EditarProductoPage() {
@@ -125,7 +125,7 @@ export default function EditarProductoPage() {
     router.refresh();
   };
 
-  if (loading) return null;
+  if (loading) return <Loading />;
 
   const currentPhoto = preview ?? fotoUrl;
 

@@ -71,7 +71,10 @@ export default function FeriasPage() {
                     </div>
                   </div>
                   <div className="mt-3 bg-white bg-opacity-20 rounded-xl px-4 py-2.5 text-center">
-                    <span className="font-body font-bold text-sm">🎯 Armar canasta para esta feria →</span>
+                    {f.total_llevado > 0
+                      ? <span className="font-body font-bold text-sm">📝 Anotar lo vendido →</span>
+                      : <span className="font-body font-bold text-sm">🎯 Armar canasta para esta feria →</span>
+                    }
                   </div>
                 </div>
               </Link>

@@ -5,16 +5,19 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const emptyForm = {
+  nombre: "", fecha: "", ubicacion: "",
+  costo_inscripcion: "", costo_transporte: "", notas: "",
+};
+
 export default function NuevaFeriaPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [form, setForm] = useState({
-    nombre: "", fecha: "", ubicacion: "",
-    costo_inscripcion: "", costo_transporte: "", notas: "",
-  });
+  const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [savedName, setSavedName] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!form.nombre || !form.fecha) {
@@ -25,7 +28,6 @@ export default function NuevaFeriaPage() {
     setError("");
 
     const { error: err } = await supabase
-      
       .from("ferias")
       .insert({
         nombre: form.nombre.trim(),
@@ -41,9 +43,19 @@ export default function NuevaFeriaPage() {
       setError("Error al guardar: " + err.message);
       setLoading(false);
     } else {
-      router.push("/ferias");
-      router.refresh();
+      setSavedName(form.nombre.trim());
+      setForm(emptyForm);
+      setLoading(false);
     }
+  };
+
+  const handleCrearOtra = () => {
+    setSavedName(null);
+  };
+
+  const handleVerFerias = () => {
+    router.push("/ferias");
+    router.refresh();
   };
 
   return (
@@ -55,6 +67,37 @@ export default function NuevaFeriaPage() {
       </Link>
 
       <h1 className="font-display font-black text-vs-text text-2xl mb-5">Nueva Feria</h1>
+
+      {/* Banner de éxito */}
+      {savedName && (
+        <div className="bg-vs-greenPale border border-vs-green rounded-2xl p-5 mb-6">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🎉</span>
+            <div className="flex-1">
+              <div className="font-display font-black text-vs-green text-base leading-tight">
+                ¡Feria creada!
+              </div>
+              <div className="font-body text-vs-green text-sm mt-1 opacity-80">
+                &ldquo;{savedName}&rdquo; fue registrada correctamente.
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <button
+              onClick={handleCrearOtra}
+              className="bg-white border border-vs-green text-vs-green font-body font-bold text-sm py-3 rounded-xl hover:bg-vs-greenPale transition-colors"
+            >
+              + Crear otra
+            </button>
+            <button
+              onClick={handleVerFerias}
+              className="bg-vs-green text-white font-body font-bold text-sm py-3 rounded-xl hover:bg-opacity-90 transition-all"
+            >
+              Ver ferias →
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 mb-4 text-sm font-body">
