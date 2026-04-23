@@ -1,4 +1,5 @@
 import type { Producto, ResumenFeria } from "@/types/database";
+import type { Cell } from "exceljs";
 
 export async function exportarReporteExcel(feriasList: ResumenFeria[], prodList: Producto[]) {
   const { default: ExcelJS } = await import("exceljs");
@@ -12,7 +13,7 @@ export async function exportarReporteExcel(feriasList: ResumenFeria[], prodList:
   const RED_BG = "FFFEE2E2";
   const YELLOW_BG = "FFFFF3CD";
 
-  const hStyle = (cell: ExcelJS.Cell) => {
+  const hStyle = (cell: Cell) => {
     cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GREEN } };
     cell.alignment = { horizontal: "center", vertical: "middle" };
