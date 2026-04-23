@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { fmt } from "@/lib/utils";
+import { convertToWebP } from "@/lib/imageUtils";
 import Link from "next/link";
 
 const CATEGORIAS = ["Snacks", "Proteínas", "Infusiones", "Semillas", "Aceites", "Bebidas", "Suplementos", "Otro"];
@@ -43,13 +44,13 @@ export default function NuevoProductoPage() {
 
     let foto_url: string | null = null;
 
-    // Subir foto si hay una
+    // Subir foto si hay una (convertida a WebP para reducir peso)
     if (foto) {
-      const ext = foto.name.split(".").pop();
-      const path = `productos/${Date.now()}.${ext}`;
+      const webpFile = await convertToWebP(foto);
+      const path = `productos/${Date.now()}.webp`;
       const { error: uploadError } = await supabase.storage
         .from("vitalstock-productos")
-        .upload(path, foto);
+        .upload(path, webpFile, { contentType: "image/webp" });
 
       if (!uploadError) {
         const { data } = supabase.storage
@@ -113,7 +114,7 @@ export default function NuevoProductoPage() {
           <div className="border-2 border-dashed border-vs-border rounded-2xl p-8 text-center bg-vs-greenPale hover:border-vs-green transition-colors">
             <div className="text-4xl mb-2">📷</div>
             <div className="font-body font-bold text-vs-green text-sm">Subir foto del producto</div>
-            <div className="font-body text-vs-muted text-xs mt-1">JPG, PNG hasta 5MB</div>
+            <div className="font-body text-vs-muted text-xs mt-1">JPG, PNG, HEIC — se convierte a WebP automáticamente</div>
           </div>
         )}
       </label>
