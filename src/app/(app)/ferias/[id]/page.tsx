@@ -7,6 +7,7 @@ import type { Feria, FeriaProducto, Producto } from "@/types/database";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { FeriaHeader, ArmarCanastaView, RegistrarVentasView, ResultadosFeriaView } from "./FeriaViews";
+
 export default function FeriaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const supabase = createClient();
@@ -17,9 +18,13 @@ export default function FeriaDetailPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState<"view" | "armar" | "registrar">("view");
 
-  // Para armar canasta
+  // Canasta editing
+  const [editandoCanasta, setEditandoCanasta] = useState(false);
+  const [editItems, setEditItems] = useState<Record<string, { fpId: string; cantidad: number }>>({});
+  const [nuevasAdiciones, setNuevasAdiciones] = useState<Record<string, number>>({});
+
+  // Para armar canasta nueva
   const [canasta, setCanasta] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -46,7 +51,7 @@ export default function FeriaDetailPage() {
   const gastosFeria = (feria?.costo_inscripcion ?? 0) + (feria?.costo_transporte ?? 0);
   const gananciaNeta = totalIngresos - totalCostos - gastosFeria;
 
-  // Guardar canasta
+  // Guardar canasta nueva
   const handleGuardarCanasta = async () => {
     setSaving(true);
     const rows = Object.entries(canasta)
@@ -64,6 +69,45 @@ export default function FeriaDetailPage() {
 
     await supabase.from("feria_productos").insert(rows);
     router.refresh();
+    window.location.reload();
+  };
+
+  // Entrar a modo edición de canasta
+  const entrarEditCanasta = () => {
+    const initial: Record<string, { fpId: string; cantidad: number }> = {};
+    items.forEach((i) => {
+      initial[i.producto_id] = { fpId: i.id, cantidad: i.cantidad_llevada };
+    });
+    setEditItems(initial);
+    setNuevasAdiciones({});
+    setEditandoCanasta(true);
+  };
+
+  // Guardar edición de canasta
+  const handleGuardarEditCanasta = async () => {
+    setSaving(true);
+    for (const [productoId, { fpId, cantidad }] of Object.entries(editItems)) {
+      const original = items.find((i) => i.id === fpId);
+      if (cantidad === 0) {
+        await supabase.from("feria_productos").delete().eq("id", fpId);
+      } else if (original && original.cantidad_llevada !== cantidad) {
+        await supabase.from("feria_productos").update({ cantidad_llevada: cantidad }).eq("id", fpId);
+      }
+    }
+    for (const [productoId, cantidad] of Object.entries(nuevasAdiciones)) {
+      if (cantidad > 0) {
+        const p = productos.find((pr) => pr.id === productoId);
+        await supabase.from("feria_productos").insert({
+          feria_id: id,
+          producto_id: productoId,
+          cantidad_llevada: cantidad,
+          cantidad_vendida: 0,
+          precio_venta_feria: p?.precio_venta ?? 0,
+        });
+      }
+    }
+    setEditandoCanasta(false);
+    setSaving(false);
     window.location.reload();
   };
 
@@ -103,6 +147,10 @@ export default function FeriaDetailPage() {
   const esProxima = feria.estado === "proxima";
   const esFinalizada = feria.estado === "finalizada";
 
+  // Products not yet in the basket
+  const productosEnCanasta = new Set(items.map((i) => i.producto_id));
+  const productosDisponibles = productos.filter((p) => !productosEnCanasta.has(p.id));
+
   return (
     <div>
       <Link href="/ferias">
@@ -111,9 +159,9 @@ export default function FeriaDetailPage() {
         </button>
       </Link>
 
-      {/* Header feria */}
       <FeriaHeader
         feria={feria}
+        id={id}
         esProxima={esProxima}
         totalIngresos={totalIngresos}
         gananciaNeta={gananciaNeta}
@@ -130,16 +178,125 @@ export default function FeriaDetailPage() {
         />
       )}
 
-      {/* MODO: Registrar ventas (feria con items, no finalizada) */}
-      {!esFinalizada && items.length > 0 && (
-        <RegistrarVentasView
-          items={items}
-          updateVendidos={updateVendidos}
-          gastosFeria={gastosFeria}
-          gananciaNeta={gananciaNeta}
-          handleCerrarFeria={handleCerrarFeria}
-          saving={saving}
-        />
+      {/* MODO: Registrar ventas (feria con items, no finalizada, no editando) */}
+      {!esFinalizada && items.length > 0 && !editandoCanasta && (
+        <>
+          <RegistrarVentasView
+            items={items}
+            updateVendidos={updateVendidos}
+            gastosFeria={gastosFeria}
+            gananciaNeta={gananciaNeta}
+            handleCerrarFeria={handleCerrarFeria}
+            saving={saving}
+          />
+          <button
+            onClick={entrarEditCanasta}
+            className="w-full mt-3 py-3 rounded-2xl font-body font-bold text-sm text-vs-green border border-vs-border hover:border-vs-green transition-colors"
+          >
+            ✏️ Editar canasta
+          </button>
+        </>
+      )}
+
+      {/* MODO: Editar canasta */}
+      {!esFinalizada && items.length > 0 && editandoCanasta && (
+        <div>
+          <h2 className="font-display font-bold text-vs-text text-lg mb-3">✏️ Editar canasta</h2>
+
+          <div className="space-y-3 mb-5">
+            {items.map((item) => {
+              const edit = editItems[item.producto_id] ?? { fpId: item.id, cantidad: item.cantidad_llevada };
+              if (edit.cantidad === 0) return null;
+              return (
+                <div key={item.id} className="bg-white border border-vs-border rounded-2xl p-4 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-body font-bold text-vs-text text-sm truncate">{item.producto?.nombre}</div>
+                    <div className="font-body text-vs-muted text-xs">{fmt(item.precio_venta_feria ?? 0)} c/u</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        setEditItems((prev) => ({
+                          ...prev,
+                          [item.producto_id]: { fpId: item.id, cantidad: Math.max(0, (prev[item.producto_id]?.cantidad ?? item.cantidad_llevada) - 1) },
+                        }))
+                      }
+                      className="w-8 h-8 rounded-full border border-vs-border font-body font-bold text-vs-text flex items-center justify-center hover:border-vs-green transition-colors"
+                    >−</button>
+                    <span className="font-display font-black text-vs-green text-lg w-8 text-center">{edit.cantidad}</span>
+                    <button
+                      onClick={() =>
+                        setEditItems((prev) => ({
+                          ...prev,
+                          [item.producto_id]: { fpId: item.id, cantidad: (prev[item.producto_id]?.cantidad ?? item.cantidad_llevada) + 1 },
+                        }))
+                      }
+                      className="w-8 h-8 rounded-full border border-vs-border font-body font-bold text-vs-text flex items-center justify-center hover:border-vs-green transition-colors"
+                    >+</button>
+                    <button
+                      onClick={() =>
+                        setEditItems((prev) => ({
+                          ...prev,
+                          [item.producto_id]: { fpId: item.id, cantidad: 0 },
+                        }))
+                      }
+                      className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-base hover:bg-red-100 transition-colors"
+                    >🗑</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {productosDisponibles.length > 0 && (
+            <>
+              <h3 className="font-display font-bold text-vs-text text-base mb-2">Agregar productos</h3>
+              <div className="space-y-3 mb-5">
+                {productosDisponibles.map((p) => (
+                  <div key={p.id} className="bg-white border border-vs-border rounded-2xl p-4 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-body font-bold text-vs-text text-sm truncate">{p.nombre}</div>
+                      <div className="font-body text-vs-muted text-xs">Stock: {p.stock_actual} u · {fmt(p.precio_venta)}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {(nuevasAdiciones[p.id] ?? 0) > 0 && (
+                        <button
+                          onClick={() =>
+                            setNuevasAdiciones((prev) => ({ ...prev, [p.id]: Math.max(0, (prev[p.id] ?? 0) - 1) }))
+                          }
+                          className="w-8 h-8 rounded-full border border-vs-border font-body font-bold text-vs-text flex items-center justify-center hover:border-vs-green transition-colors"
+                        >−</button>
+                      )}
+                      {(nuevasAdiciones[p.id] ?? 0) > 0 && (
+                        <span className="font-display font-black text-vs-green text-lg w-8 text-center">{nuevasAdiciones[p.id]}</span>
+                      )}
+                      <button
+                        onClick={() =>
+                          setNuevasAdiciones((prev) => ({ ...prev, [p.id]: (prev[p.id] ?? 0) + 1 }))
+                        }
+                        className="w-8 h-8 rounded-full bg-vs-greenPale text-vs-green font-body font-bold flex items-center justify-center hover:bg-vs-green hover:text-white transition-colors"
+                      >+</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <button
+            onClick={handleGuardarEditCanasta}
+            disabled={saving}
+            className="w-full bg-vs-green text-white font-body font-bold text-base py-4 rounded-2xl hover:bg-opacity-90 transition-all disabled:opacity-60"
+          >
+            {saving ? "Guardando..." : "Guardar canasta ✓"}
+          </button>
+          <button
+            onClick={() => setEditandoCanasta(false)}
+            className="w-full mt-3 py-3 rounded-2xl font-body font-bold text-sm text-vs-muted border border-vs-border hover:border-vs-green transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
       )}
 
       {/* MODO: Ver resultados (feria finalizada) */}

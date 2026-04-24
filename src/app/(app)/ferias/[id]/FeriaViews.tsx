@@ -1,19 +1,29 @@
+import Link from "next/link";
 import { fmt } from "@/lib/utils";
 import type { Feria, FeriaProducto, Producto } from "@/types/database";
 
 export function FeriaHeader({
   feria,
+  id,
   esProxima,
   totalIngresos,
   gananciaNeta,
 }: {
   feria: Feria;
+  id: string;
   esProxima: boolean;
   totalIngresos: number;
   gananciaNeta: number;
 }) {
   return (
-    <div className="bg-vs-green text-white rounded-2xl p-5 mb-5">
+    <div className="bg-vs-green text-white rounded-2xl p-5 mb-5 relative">
+      <Link href={`/ferias/${id}/editar`}>
+        <button className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-white bg-opacity-20 hover:bg-opacity-30 transition-all flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+          </svg>
+        </button>
+      </Link>
       <div className="text-xs font-body opacity-75 mb-1 uppercase tracking-wide">Feria</div>
       <div className="font-display font-black text-xl leading-tight">{feria.nombre}</div>
       <div className="font-body text-sm opacity-85 mt-1">
