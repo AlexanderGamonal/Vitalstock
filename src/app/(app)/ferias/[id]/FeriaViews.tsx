@@ -107,14 +107,16 @@ export function ArmarCanastaView({
 
 export function RegistrarVentasView({
   items,
-  updateVendidos,
+  devoluciones,
+  updateDevoluciones,
   gastosFeria,
   gananciaNeta,
   handleCerrarFeria,
   saving,
 }: {
   items: (FeriaProducto & { producto: Producto })[];
-  updateVendidos: (itemId: string, delta: number) => void;
+  devoluciones: Record<string, number>;
+  updateDevoluciones: (itemId: string, delta: number) => void;
   gastosFeria: number;
   gananciaNeta: number;
   handleCerrarFeria: () => void;
@@ -125,31 +127,30 @@ export function RegistrarVentasView({
       <h2 className="font-display font-bold text-vs-text text-lg mb-3">Registro de ventas</h2>
       <div className="space-y-3 mb-4">
         {items.map((item) => {
-          const vendido = item.cantidad_vendida;
+          const devuelto = devoluciones[item.id] ?? 0;
           const llevado = item.cantidad_llevada;
+          const vendido = llevado - devuelto;
           const pct = llevado > 0 ? (vendido / llevado) * 100 : 0;
           return (
             <div key={item.id} className="bg-white border border-vs-border rounded-2xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <div>
                   <div className="font-body font-bold text-vs-text text-sm">{item.producto?.nombre}</div>
-                  <div className="font-body text-vs-muted text-xs">
-                    Llevé: {llevado} · Devuelvo: {llevado - vendido}
-                  </div>
+                  <div className="font-body text-vs-muted text-xs">Llevé: {llevado} u</div>
                 </div>
                 <div className="font-display font-black text-vs-green text-base">
                   {fmt(vendido * (item.precio_venta_feria ?? 0))}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-body text-vs-muted text-xs font-semibold">Vendidos:</span>
+                <span className="font-body text-vs-muted text-xs font-semibold">Devuelvo:</span>
                 <button
-                  onClick={() => updateVendidos(item.id, -1)}
+                  onClick={() => updateDevoluciones(item.id, -1)}
                   className="w-8 h-8 rounded-full border border-vs-border font-body text-vs-text flex items-center justify-center text-lg hover:border-vs-green transition-colors"
                 >−</button>
-                <span className="font-display font-black text-vs-green text-xl w-8 text-center">{vendido}</span>
+                <span className="font-display font-black text-vs-green text-xl w-8 text-center">{devuelto}</span>
                 <button
-                  onClick={() => updateVendidos(item.id, 1)}
+                  onClick={() => updateDevoluciones(item.id, 1)}
                   className="w-8 h-8 rounded-full border border-vs-border font-body text-vs-text flex items-center justify-center text-lg hover:border-vs-green transition-colors"
                 >+</button>
                 <div className="flex-1">

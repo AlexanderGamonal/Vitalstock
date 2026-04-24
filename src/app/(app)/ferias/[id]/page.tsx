@@ -19,6 +19,17 @@ export default function FeriaDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Devoluciones (track returns; vendido = llevado - devuelto)
+  const [devoluciones, setDevoluciones] = useState<Record<string, number>>({});
+
+  const updateDevoluciones = (itemId: string, delta: number) => {
+    setDevoluciones((prev) => {
+      const item = items.find((i) => i.id === itemId)!;
+      const current = prev[itemId] ?? 0;
+      return { ...prev, [itemId]: Math.max(0, Math.min(item.cantidad_llevada, current + delta)) };
+    });
+  };
+
   // Canasta editing
   const [editandoCanasta, setEditandoCanasta] = useState(false);
   const [editItems, setEditItems] = useState<Record<string, { fpId: string; cantidad: number }>>({});
@@ -42,12 +53,14 @@ export default function FeriaDetailPage() {
     load();
   }, [id]);
 
-  const totalIngresos = items.reduce(
-    (a, i) => a + i.cantidad_vendida * (i.precio_venta_feria ?? i.producto?.precio_venta ?? 0), 0
-  );
-  const totalCostos = items.reduce(
-    (a, i) => a + i.cantidad_vendida * (i.producto?.precio_costo ?? 0), 0
-  );
+  const totalIngresos = items.reduce((a, i) => {
+    const vendido = i.cantidad_llevada - (devoluciones[i.id] ?? 0);
+    return a + vendido * (i.precio_venta_feria ?? i.producto?.precio_venta ?? 0);
+  }, 0);
+  const totalCostos = items.reduce((a, i) => {
+    const vendido = i.cantidad_llevada - (devoluciones[i.id] ?? 0);
+    return a + vendido * (i.producto?.precio_costo ?? 0);
+  }, 0);
   const gastosFeria = (feria?.costo_inscripcion ?? 0) + (feria?.costo_transporte ?? 0);
   const gananciaNeta = totalIngresos - totalCostos - gastosFeria;
 
@@ -111,24 +124,14 @@ export default function FeriaDetailPage() {
     window.location.reload();
   };
 
-  // Actualizar ventas
-  const updateVendidos = (itemId: string, delta: number) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === itemId
-          ? { ...i, cantidad_vendida: Math.max(0, Math.min(i.cantidad_llevada, i.cantidad_vendida + delta)) }
-          : i
-      )
-    );
-  };
-
   // Guardar ventas y cerrar feria
   const handleCerrarFeria = async () => {
     setSaving(true);
     for (const item of items) {
+      const vendido = item.cantidad_llevada - (devoluciones[item.id] ?? 0);
       await supabase
         .from("feria_productos")
-        .update({ cantidad_vendida: item.cantidad_vendida })
+        .update({ cantidad_vendida: vendido })
         .eq("id", item.id);
     }
     await supabase.rpc("cerrar_feria", { p_feria_id: id });
@@ -183,7 +186,8 @@ export default function FeriaDetailPage() {
         <>
           <RegistrarVentasView
             items={items}
-            updateVendidos={updateVendidos}
+            devoluciones={devoluciones}
+            updateDevoluciones={updateDevoluciones}
             gastosFeria={gastosFeria}
             gananciaNeta={gananciaNeta}
             handleCerrarFeria={handleCerrarFeria}
