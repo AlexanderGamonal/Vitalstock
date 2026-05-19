@@ -76,7 +76,12 @@ export function ArmarCanastaView({
           <div key={p.id} className="bg-white border border-vs-border rounded-2xl p-4 flex items-center gap-3">
             <div className="flex-1">
               <div className="font-body font-bold text-vs-text text-sm">{p.nombre}</div>
-              <div className="font-body text-vs-muted text-xs">Stock: {p.stock_actual} u · {fmt(p.precio_venta)}</div>
+              <div className="font-body text-vs-muted text-xs">
+                Stock: {p.stock_actual} u ·{" "}
+                {p.precio_descuento != null ? (
+                  <><span className="text-orange-500 font-semibold">{fmt(p.precio_descuento)}</span> <span className="line-through">{fmt(p.precio_venta)}</span></>
+                ) : fmt(p.precio_venta)}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button

@@ -16,7 +16,7 @@ export default function EditarProductoPage() {
 
   const [form, setForm] = useState({
     nombre: "", descripcion: "", categoria: "",
-    precio_costo: "", precio_venta: "",
+    precio_costo: "", precio_venta: "", precio_descuento: "",
     stock_actual: "", stock_minimo: "", fecha_venc: "",
     destacado: false,
   });
@@ -41,6 +41,7 @@ export default function EditarProductoPage() {
             categoria: data.categoria ?? "",
             precio_costo: String(data.precio_costo ?? ""),
             precio_venta: String(data.precio_venta ?? ""),
+            precio_descuento: data.precio_descuento != null ? String(data.precio_descuento) : "",
             stock_actual: String(data.stock_actual ?? ""),
             stock_minimo: String(data.stock_minimo ?? ""),
             fecha_venc: data.fecha_venc ?? "",
@@ -54,7 +55,9 @@ export default function EditarProductoPage() {
 
   const pCosto = parseFloat(form.precio_costo) || 0;
   const pVenta = parseFloat(form.precio_venta) || 0;
-  const margen = pVenta > 0 ? (((pVenta - pCosto) / pVenta) * 100).toFixed(1) : null;
+  const pDescuento = form.precio_descuento ? parseFloat(form.precio_descuento) : null;
+  const pEfectivo = pDescuento ?? pVenta;
+  const margen = pEfectivo > 0 ? (((pEfectivo - pCosto) / pEfectivo) * 100).toFixed(1) : null;
 
   const handleFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,6 +104,7 @@ export default function EditarProductoPage() {
         categoria: form.categoria || null,
         precio_costo: pCosto,
         precio_venta: pVenta,
+        precio_descuento: pDescuento,
         stock_actual: parseInt(form.stock_actual),
         stock_minimo: parseInt(form.stock_minimo) || 5,
         destacado: form.destacado,
@@ -244,6 +248,25 @@ export default function EditarProductoPage() {
               className="w-full px-4 py-3 rounded-xl border border-vs-border font-body text-sm text-vs-text bg-white outline-none focus:border-vs-green transition-colors"
             />
           </div>
+          <div className="col-span-2">
+            <label className="block font-body font-bold text-vs-text text-sm mb-1.5">
+              Precio de oferta <span className="text-vs-muted font-normal">(opcional)</span>
+            </label>
+            <input
+              type="number"
+              value={form.precio_descuento}
+              onChange={(e) => setForm({ ...form, precio_descuento: e.target.value })}
+              placeholder="Dejar vacío si no hay descuento"
+              className={`w-full px-4 py-3 rounded-xl border font-body text-sm text-vs-text bg-white outline-none transition-colors ${
+                form.precio_descuento ? "border-orange-400 focus:border-orange-500" : "border-vs-border focus:border-vs-green"
+              }`}
+            />
+            {pDescuento && pVenta > 0 && (
+              <p className="font-body text-orange-600 text-xs mt-1 font-semibold">
+                🏷️ Descuento activo: {Math.round(((pVenta - pDescuento) / pVenta) * 100)}% off
+              </p>
+            )}
+          </div>
           <div>
             <label className="block font-body font-bold text-vs-text text-sm mb-1.5">Stock actual *</label>
             <input
@@ -278,12 +301,17 @@ export default function EditarProductoPage() {
       </div>
 
       {margen && (
-        <div className="bg-vs-greenPale rounded-2xl p-4 mt-5">
-          <div className="font-body text-vs-green font-bold text-sm">💡 Vista previa de margen</div>
-          <div className="font-display font-black text-vs-green text-2xl mt-1">
-            {fmt(pVenta - pCosto)} por unidad
+        <div className={`rounded-2xl p-4 mt-5 ${pDescuento ? "bg-orange-50" : "bg-vs-greenPale"}`}>
+          <div className={`font-body font-bold text-sm ${pDescuento ? "text-orange-600" : "text-vs-green"}`}>
+            {pDescuento ? "🏷️ Margen con precio de oferta" : "💡 Vista previa de margen"}
           </div>
-          <div className="font-body text-vs-muted text-xs">{margen}% de margen</div>
+          <div className={`font-display font-black text-2xl mt-1 ${pDescuento ? "text-orange-600" : "text-vs-green"}`}>
+            {fmt(pEfectivo - pCosto)} por unidad
+          </div>
+          <div className="font-body text-vs-muted text-xs">
+            {margen}% de margen
+            {pDescuento && <span className="ml-2 line-through text-vs-muted">antes {fmt(pVenta - pCosto)}</span>}
+          </div>
         </div>
       )}
 

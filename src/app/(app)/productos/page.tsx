@@ -99,7 +99,14 @@ export default function ProductosPage() {
                   <div className="flex gap-4 mt-2">
                     <div>
                       <div className="font-body text-vs-muted text-[10px]">Venta</div>
-                      <div className="font-display font-black text-vs-green text-sm">{fmt(p.precio_venta)}</div>
+                      {p.precio_descuento != null ? (
+                        <div className="flex items-center gap-1">
+                          <span className="font-display font-black text-orange-500 text-sm">{fmt(p.precio_descuento)}</span>
+                          <span className="font-body text-vs-muted text-[10px] line-through">{fmt(p.precio_venta)}</span>
+                        </div>
+                      ) : (
+                        <div className="font-display font-black text-vs-green text-sm">{fmt(p.precio_venta)}</div>
+                      )}
                     </div>
                     <div>
                       <div className="font-body text-vs-muted text-[10px]">Costo</div>
@@ -107,9 +114,16 @@ export default function ProductosPage() {
                     </div>
                     <div>
                       <div className="font-body text-vs-muted text-[10px]">Margen</div>
-                      <div className="font-body font-bold text-vs-accent text-sm">{calcMargen(p.precio_venta, p.precio_costo)}%</div>
+                      <div className="font-body font-bold text-vs-accent text-sm">
+                        {calcMargen(p.precio_descuento ?? p.precio_venta, p.precio_costo)}%
+                      </div>
                     </div>
                   </div>
+                  {p.precio_descuento != null && (
+                    <span className="inline-block mt-1 bg-orange-100 text-orange-600 font-body font-bold text-[10px] px-2 py-0.5 rounded-full">
+                      🏷️ En oferta
+                    </span>
+                  )}
 
                   {isLow && !isOut && (
                     <p className="font-body text-red-600 text-xs font-semibold mt-2">
