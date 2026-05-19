@@ -76,7 +76,7 @@ export default function FeriaDetailPage() {
           producto_id,
           cantidad_llevada,
           cantidad_vendida: 0,
-          precio_venta_feria: p?.precio_venta ?? 0,
+          precio_venta_feria: p?.precio_descuento ?? p?.precio_venta ?? 0,
         };
       });
 
@@ -115,7 +115,7 @@ export default function FeriaDetailPage() {
           producto_id: productoId,
           cantidad_llevada: cantidad,
           cantidad_vendida: 0,
-          precio_venta_feria: p?.precio_venta ?? 0,
+          precio_venta_feria: p?.precio_descuento ?? p?.precio_venta ?? 0,
         });
       }
     }

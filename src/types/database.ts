@@ -9,6 +9,7 @@ export type Producto = {
   stock_minimo: number
   categoria: string | null
   fecha_venc: string | null
+  precio_descuento: number | null
   activo: boolean
   destacado: boolean
   created_at: string
