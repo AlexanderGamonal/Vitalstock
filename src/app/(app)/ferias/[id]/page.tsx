@@ -38,6 +38,16 @@ export default function FeriaDetailPage() {
   // Para armar canasta nueva
   const [canasta, setCanasta] = useState<Record<string, number>>({});
 
+  // Auto-save canasta draft to localStorage on every change
+  useEffect(() => {
+    if (!id) return;
+    if (Object.values(canasta).some((v) => v > 0)) {
+      localStorage.setItem(`canasta_draft_${id}`, JSON.stringify(canasta));
+    } else {
+      localStorage.removeItem(`canasta_draft_${id}`);
+    }
+  }, [canasta, id]);
+
   useEffect(() => {
     const load = async () => {
       const [{ data: f }, { data: fp }, { data: p }] = await Promise.all([
@@ -48,6 +58,13 @@ export default function FeriaDetailPage() {
       setFeria(f as Feria);
       setItems((fp ?? []) as (FeriaProducto & { producto: Producto })[]);
       setProductos((p ?? []) as Producto[]);
+      // Restore canasta draft from localStorage if feria has no items yet
+      if ((fp ?? []).length === 0) {
+        try {
+          const draft = localStorage.getItem(`canasta_draft_${id}`);
+          if (draft) setCanasta(JSON.parse(draft));
+        } catch {}
+      }
       setLoading(false);
     };
     load();
@@ -81,6 +98,7 @@ export default function FeriaDetailPage() {
       });
 
     await supabase.from("feria_productos").insert(rows);
+    localStorage.removeItem(`canasta_draft_${id}`);
     router.refresh();
     window.location.reload();
   };
