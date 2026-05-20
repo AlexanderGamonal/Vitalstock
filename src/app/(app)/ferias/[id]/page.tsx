@@ -53,7 +53,7 @@ export default function FeriaDetailPage() {
       const [{ data: f }, { data: fp }, { data: p }] = await Promise.all([
         supabase.from("ferias").select("*").eq("id", id).single(),
         supabase.from("feria_productos").select("*, producto:productos(*)").eq("feria_id", id),
-        supabase.from("productos").select("*").eq("activo", true).order("nombre"),
+        supabase.from("productos").select("*").eq("activo", true).gt("stock_actual", 0).order("nombre"),
       ]);
       setFeria(f as Feria);
       setItems((fp ?? []) as (FeriaProducto & { producto: Producto })[]);
