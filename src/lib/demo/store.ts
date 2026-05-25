@@ -5,7 +5,29 @@ const K = {
   ferias: "demo_ferias",
   fp: "demo_feria_productos",
   seeded: "demo_seeded",
+  config: "demo_user_config",
 };
+
+export type DemoUserConfig = {
+  nombre: string;
+  logoUrl: string;
+  colorPrimary: string;
+  colorLight: string;
+  colorPale: string;
+  expires: string; // YYYY-MM-DD
+};
+
+export function getDemoUserConfig(): DemoUserConfig | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(K.config);
+    return raw ? (JSON.parse(raw) as DemoUserConfig) : null;
+  } catch { return null; }
+}
+
+export function saveDemoUserConfig(cfg: DemoUserConfig) {
+  localStorage.setItem(K.config, JSON.stringify(cfg));
+}
 
 function uid() { return crypto.randomUUID(); }
 function now() { return new Date().toISOString(); }
@@ -184,4 +206,8 @@ export function seedIfEmpty() {
 
 export function resetDemo() {
   [K.productos, K.ferias, K.fp, K.seeded].forEach((k) => localStorage.removeItem(k));
+}
+
+export function resetDemoFull() {
+  [K.productos, K.ferias, K.fp, K.seeded, K.config].forEach((k) => localStorage.removeItem(k));
 }
