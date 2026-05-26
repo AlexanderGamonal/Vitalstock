@@ -15,7 +15,7 @@ const COLOR_PRESETS = [
 
 function getExpiry(): string {
   const d = new Date();
-  d.setDate(d.getDate() + 15);
+  d.setDate(d.getDate() + 30);
   return d.toISOString().split("T")[0];
 }
 
@@ -24,6 +24,7 @@ export default function DemoSetupPage() {
   const [nombre, setNombre] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [colorIdx, setColorIdx] = useState(0);
+  const [usarEjemplos, setUsarEjemplos] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +41,7 @@ export default function DemoSetupPage() {
       colorPale: selectedColor.pale,
       expires: getExpiry(),
     });
-    seedIfEmpty();
+    if (usarEjemplos) seedIfEmpty();
     router.replace("/demo/dashboard");
   };
 
@@ -120,6 +121,42 @@ export default function DemoSetupPage() {
               Seleccionado: {selectedColor.label}
             </p>
           </div>
+
+          <div>
+            <label className="block font-body font-bold text-gray-700 text-sm mb-2">
+              Datos iniciales
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setUsarEjemplos(true)}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  usarEjemplos
+                    ? "border-2 bg-gray-50"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+                style={usarEjemplos ? { borderColor: selectedColor.primary } : {}}
+              >
+                <div className="text-xl mb-1">🎯</div>
+                <div className="font-body font-bold text-gray-700 text-xs">Datos de ejemplo</div>
+                <div className="font-body text-gray-400 text-[10px] mt-0.5">Con productos y ferias de muestra</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUsarEjemplos(false)}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  !usarEjemplos
+                    ? "border-2 bg-gray-50"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+                style={!usarEjemplos ? { borderColor: selectedColor.primary } : {}}
+              >
+                <div className="text-xl mb-1">✨</div>
+                <div className="font-body font-bold text-gray-700 text-xs">Empezar en blanco</div>
+                <div className="font-body text-gray-400 text-[10px] mt-0.5">Carga tus propios productos</div>
+              </button>
+            </div>
+          </div>
         </div>
 
         <button
@@ -128,7 +165,7 @@ export default function DemoSetupPage() {
           className="w-full mt-8 py-4 rounded-2xl font-body font-bold text-base text-white transition-all hover:opacity-90 disabled:opacity-70"
           style={{ backgroundColor: selectedColor.primary }}
         >
-          {loading ? "Iniciando…" : "Comenzar prueba gratuita de 15 días →"}
+          {loading ? "Iniciando…" : "Comenzar prueba gratuita de 30 días →"}
         </button>
 
         <p className="text-center font-body text-gray-400 text-xs mt-3">
