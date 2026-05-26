@@ -41,6 +41,12 @@ export default function DemoSetupPage() {
       colorPale: selectedColor.pale,
       expires: getExpiry(),
     });
+    // Registro en Supabase — fire-and-forget, no bloquea al usuario
+    fetch("/api/demo/activar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre_negocio: nombre.trim(), color: selectedColor.label, datos_ejemplo: usarEjemplos }),
+    }).catch(() => {});
     if (usarEjemplos) seedIfEmpty();
     router.replace("/demo/dashboard");
   };
